@@ -1,4 +1,4 @@
-# Pitch Roaster 🐕🔥
+# Pitch Roaster
 
 Pitch your startup out loud. A ruthless dog-VC listens, interrupts you mid-sentence with one brutal question, and at the end hands you a scorecard.
 
@@ -7,9 +7,9 @@ Pitch your startup out loud. A ruthless dog-VC listens, interrupts you mid-sente
 ## How it works
 
 1. **Pick your VC** (each has its own personality and its own voice):
-   - 🐕‍🦺 **The Shark**: aggressive and impatient
-   - 🐩 **The Numbers Guy**: only cares about metrics
-   - 🐶 **The Skeptic**: thinks every startup is just a feature
+   - **The Shark** (Doberman): aggressive and impatient
+   - **The Numbers Guy** (Poodle): only cares about metrics
+   - **The Skeptic** (Bulldog): thinks every startup is just a feature
 2. **Start pitching.** Your words appear live on screen (browser speech recognition).
 3. **Get interrupted.** After about 2.5 seconds of silence, or every 30 seconds of non-stop talking, the full transcript goes to Gemini. The VC picks your weakest claim and fires back one question under 25 words. It is spoken aloud and slams onto the screen. Your mic pauses while the VC talks, then resumes so you can answer. The VC never repeats a question.
 4. **End the pitch.** The transcript plus every question and answer goes to Gemini, which returns JSON with scores out of 100 for clarity, conviction, objection handling and market knowledge. It also returns your best answer, your worst answer, and a savage line on whether they invest.

@@ -1,6 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  Bone,
+  CaretRight,
+  Dog,
+  Microphone,
+  MicrophoneSlash,
+  PawPrint,
+  Stop,
+  Warning,
+} from "@phosphor-icons/react";
 import Scorecard from "./scorecard";
 import { VC_LIST, VCS, type LogEntry, type Scorecard as ScorecardData, type Vc, type VcId } from "@/lib/vcs";
 
@@ -66,7 +76,7 @@ function pickVoice(vc: Vc): SpeechSynthesisVoice | undefined {
 }
 
 const PHASE_LABEL: Record<Phase, string> = {
-  idle: "Press Start and pitch.",
+  idle: "Ready when you are.",
   listening: "Listening…",
   thinking: "VC is thinking…",
   speaking: "VC is speaking…",
@@ -410,201 +420,223 @@ export default function Home() {
   const listening = phase === "listening";
 
   const notices = (
-    <>
+    <div className="flex flex-col gap-3 empty:hidden">
       {!supported && (
-        <div role="alert" className="rounded-xl border-2 border-red-600 bg-red-950/60 p-4 text-red-200">
-          <p className="font-bold">🚫 Speech recognition isn&apos;t supported in this browser.</p>
-          <p className="mt-1 text-sm">
-            The VCs can&apos;t hear you here. Open Pitch Roaster in Google Chrome, Microsoft Edge or
-            Safari on desktop.
-          </p>
+        <div role="alert" className="flex gap-3 rounded-xl border border-accent/60 bg-accent/10 p-4">
+          <MicrophoneSlash size={24} weight="bold" className="mt-0.5 shrink-0 text-accent" />
+          <div>
+            <p className="font-semibold">This browser can&apos;t do speech recognition.</p>
+            <p className="mt-1 text-sm text-muted">
+              The VCs can&apos;t hear you here. Open Pitch Roaster in Chrome, Edge or Safari on
+              desktop.
+            </p>
+          </div>
         </div>
       )}
       {micProblem && (
-        <div role="alert" className="rounded-xl border-2 border-red-600 bg-red-950/60 p-4 text-red-200">
-          <p className="font-bold">🎙️ Microphone problem</p>
-          <p className="mt-1 text-sm">{micProblem}</p>
+        <div role="alert" className="flex gap-3 rounded-xl border border-accent/60 bg-accent/10 p-4">
+          <MicrophoneSlash size={24} weight="bold" className="mt-0.5 shrink-0 text-accent" />
+          <div>
+            <p className="font-semibold">Microphone problem</p>
+            <p className="mt-1 text-sm text-muted">{micProblem}</p>
+          </div>
         </div>
       )}
       {!canSpeak && (
-        <div className="rounded-xl border border-amber-500/60 bg-amber-950/40 p-4 text-sm text-amber-200">
-          This browser can&apos;t speak out loud, so the VC&apos;s questions will only appear on screen.
+        <div className="flex gap-3 rounded-xl border border-line bg-surface p-4">
+          <Warning size={24} weight="bold" className="mt-0.5 shrink-0 text-muted" />
+          <p className="text-sm text-muted">
+            This browser can&apos;t speak out loud, so the VC&apos;s questions will only appear on
+            screen.
+          </p>
         </div>
       )}
-    </>
+    </div>
   );
 
   if (!vc) {
     return (
-      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 px-6 py-14">
-        <header className="text-center">
-          <p className="text-xs font-bold uppercase tracking-[0.5em] text-brass">
-            🐾 Doghouse &amp; Partners · Boardroom
+      <main className="mx-auto grid w-full max-w-6xl flex-1 content-center gap-12 px-5 py-14 sm:px-8 lg:grid-cols-[5fr_7fr] lg:gap-16">
+        <div className="flex flex-col justify-center gap-6">
+          <div className="flex items-center gap-2 text-sm font-semibold text-muted">
+            <PawPrint size={20} weight="fill" className="text-accent" />
+            Pitch Roaster
+          </div>
+          <h1 className="text-5xl font-black leading-[0.95] tracking-tighter sm:text-6xl lg:text-7xl">
+            Pick who you have to survive.
+          </h1>
+          <p className="max-w-[40ch] text-muted">
+            Pitch out loud. One of three dogs interrupts you and scores the result.
           </p>
-          <h1 className="mt-3 text-5xl font-black tracking-tight sm:text-6xl">Pitch Roaster</h1>
-          <p className="mt-3 text-stone-400">Take a seat. Choose the dog who decides your fate.</p>
-        </header>
-        {notices}
-        <div className="grid gap-5 sm:grid-cols-3">
-          {VC_LIST.map((v) => (
-            <button
-              key={v.id}
-              onClick={() => chooseVc(v.id)}
-              className="group flex flex-col items-center gap-3 rounded-2xl border-2 border-brass/40 bg-black/40 p-6 text-center shadow-[0_0_30px_rgba(0,0,0,0.6)] transition hover:-translate-y-1 hover:border-red-600 hover:bg-red-950/30"
-            >
-              <span className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-brass bg-stone-900 text-6xl transition group-hover:scale-110">
-                {v.emoji}
-              </span>
-              <span className="text-xl font-extrabold">{v.name}</span>
-              <span className="text-sm text-stone-400">{v.tagline}</span>
-            </button>
-          ))}
+          {notices}
         </div>
+
+        <ul className="flex flex-col divide-y divide-line self-center rounded-xl border border-line bg-surface/60">
+          {VC_LIST.map((v) => (
+            <li key={v.id}>
+              <button
+                onClick={() => chooseVc(v.id)}
+                className="group flex w-full items-center gap-5 p-5 text-left transition first:rounded-t-xl last:rounded-b-xl hover:bg-accent/10 active:scale-[0.99]"
+              >
+                <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-line text-foreground transition group-hover:bg-accent group-hover:text-white">
+                  <Dog size={36} weight="duotone" />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="text-xl font-extrabold tracking-tight">{v.name}</span>
+                  <span className="text-sm text-muted">{v.breed}. {v.tagline}</span>
+                </span>
+                <CaretRight
+                  size={22}
+                  weight="bold"
+                  className="shrink-0 text-muted transition group-hover:translate-x-1 group-hover:text-accent"
+                />
+              </button>
+            </li>
+          ))}
+        </ul>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-10">
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-5 py-8 sm:px-8">
       {scoring && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-black/90 text-white">
-          <span className="text-7xl">{vc.emoji}</span>
-          <p className="animate-pulse text-3xl font-black uppercase tracking-widest text-red-500">
-            {vc.name} is deliberating…
-          </p>
-          <p className="text-stone-400">Tallying the damage.</p>
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-background/95">
+          <Dog size={72} weight="duotone" className="animate-pulse text-accent" />
+          <p className="text-3xl font-black tracking-tighter">{vc.name} is deliberating</p>
+          <p className="text-muted">Tallying the damage.</p>
         </div>
       )}
 
       <header className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.4em] text-brass">
-            🐾 Doghouse &amp; Partners
-          </p>
-          <h1 className="text-3xl font-black tracking-tight">Pitch Roaster</h1>
+        <div className="flex items-center gap-2 text-sm font-semibold text-muted">
+          <PawPrint size={20} weight="fill" className="text-accent" />
+          Pitch Roaster
         </div>
         <div
-          className="flex items-center gap-2 rounded-lg border border-brass/50 bg-black/60 px-4 py-2 font-mono text-2xl tabular-nums"
+          className="rounded-xl border border-line bg-surface px-4 py-2 font-mono text-3xl tabular-nums tracking-tight"
           aria-label="Pitch timer"
         >
-          <span className={`h-3 w-3 rounded-full ${active ? "animate-pulse bg-red-600" : "bg-stone-600"}`} />
-          {fmtTime(elapsed)}
+          <span className={active ? "text-foreground" : "text-muted"}>{fmtTime(elapsed)}</span>
         </div>
       </header>
 
       {notices}
 
-      <section className="flex flex-col items-center gap-4 rounded-3xl border-2 border-brass/30 bg-black/40 p-6 text-center">
-        <div
-          className={`flex h-28 w-28 items-center justify-center rounded-full border-4 bg-stone-900 text-7xl ${
-            phase === "speaking" ? "animate-pulse border-red-600" : "border-brass"
-          }`}
-        >
-          {vc.emoji}
-        </div>
-        <div>
-          <p className="text-xl font-extrabold">{vc.name}</p>
-          <p className="text-sm text-stone-400">{vc.tagline}</p>
-          {!active && (
-            <button
-              onClick={() => setVcId(null)}
-              className="mt-1 text-sm text-stone-400 underline hover:text-red-500"
+      <div className="grid flex-1 content-start gap-8 lg:grid-cols-[5fr_7fr] lg:items-start">
+        <section className="flex flex-col gap-6 rounded-xl border border-line bg-surface/60 p-6 lg:sticky lg:top-8">
+          <div className="flex items-center gap-4">
+            <span
+              className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-xl transition ${
+                phase === "speaking" ? "bg-accent text-white" : "bg-line text-foreground"
+              }`}
             >
-              Change VC
+              <Dog size={48} weight="duotone" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-2xl font-black tracking-tight">{vc.name}</p>
+              <p className="text-sm text-muted">{vc.breed}. {vc.tagline}</p>
+              {!active && (
+                <button
+                  onClick={() => setVcId(null)}
+                  className="mt-1 text-sm text-muted underline underline-offset-4 transition hover:text-accent"
+                >
+                  Change VC
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-5">
+            <div className="relative flex h-16 w-16 shrink-0 items-center justify-center">
+              {listening && (
+                <span className="absolute inset-0 rounded-xl bg-accent/40 motion-safe:animate-ping" />
+              )}
+              <span
+                className={`relative flex h-16 w-16 items-center justify-center rounded-xl ${
+                  listening ? "bg-accent text-white" : "bg-line text-muted"
+                }`}
+              >
+                <Microphone size={30} weight="fill" />
+              </span>
+            </div>
+            <p className="text-lg font-bold tracking-tight" aria-live="polite">
+              {PHASE_LABEL[phase]}
+            </p>
+          </div>
+
+          {!active ? (
+            <button
+              onClick={start}
+              disabled={!supported || scoring}
+              className="rounded-xl bg-accent px-6 py-4 text-lg font-extrabold text-white transition hover:brightness-110 active:translate-y-px active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Start pitch
+            </button>
+          ) : (
+            <button
+              onClick={endPitch}
+              className="flex items-center justify-center gap-2 rounded-xl border border-foreground/30 px-6 py-4 text-lg font-extrabold transition hover:bg-foreground hover:text-background active:translate-y-px active:scale-[0.98]"
+            >
+              <Stop size={22} weight="fill" />
+              End pitch
             </button>
           )}
-        </div>
+        </section>
 
-        <div className="relative flex h-24 w-24 items-center justify-center">
-          {listening && (
-            <>
-              <span className="absolute inset-0 animate-ping rounded-full bg-red-600/50" />
-              <span className="absolute -inset-3 animate-ping rounded-full bg-red-600/20 [animation-delay:400ms]" />
-            </>
+        <div className="flex min-w-0 flex-col gap-8">
+          {question && (
+            <section key={log.length} role="alert" className="slam relative">
+              <div className="flash pointer-events-none fixed inset-0 z-40 bg-accent/25" />
+              <div className="rounded-xl border-2 border-accent bg-accent/10 p-6 shadow-[0_12px_40px_-12px_rgba(224,69,47,0.5)]">
+                <p className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-widest text-accent">
+                  <Bone size={20} weight="fill" />
+                  Interruption
+                </p>
+                <p className="mt-3 text-3xl font-black leading-[1.1] tracking-tighter sm:text-4xl">
+                  {question}
+                </p>
+              </div>
+            </section>
           )}
-          <span
-            className={`relative flex h-20 w-20 items-center justify-center rounded-full ${
-              listening ? "bg-red-600 shadow-[0_0_30px_rgba(220,38,38,0.9)]" : "bg-stone-800"
-            }`}
-          >
-            <svg viewBox="0 0 24 24" className="h-9 w-9" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <rect x="9" y="3" width="6" height="11" rx="3" />
-              <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
-            </svg>
-          </span>
+
+          <section aria-live="polite">
+            <h2 className="mb-3 text-sm font-semibold text-muted">Live transcript</h2>
+            <div className="min-h-40 whitespace-pre-wrap rounded-xl border border-line bg-surface/60 p-5 text-lg leading-relaxed">
+              {finalText || interim ? (
+                <>
+                  {finalText}
+                  {interim && <span className="text-muted"> {interim}</span>}
+                </>
+              ) : (
+                <span className="text-muted">Your pitch will appear here.</span>
+              )}
+            </div>
+          </section>
+
+          {error && <p className="text-accent">{error}</p>}
+
+          {log.length > 0 && (
+            <section>
+              <h2 className="mb-3 text-sm font-semibold text-muted">Questions and answers</h2>
+              <ol className="flex flex-col divide-y divide-line border-y border-line">
+                {log.map((entry, i) => {
+                  const isLast = i === log.length - 1;
+                  const answer = isLast ? (entry.answer + " " + liveAnswer).trim() : entry.answer;
+                  return (
+                    <li key={i} className="py-4">
+                      <p className="font-bold text-accent">{entry.question}</p>
+                      <p className="mt-2 whitespace-pre-wrap text-foreground/90">
+                        {answer || <span className="text-muted">Waiting for your answer.</span>}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          )}
         </div>
-        <p className="text-sm font-semibold uppercase tracking-widest text-stone-300">
-          {PHASE_LABEL[phase]}
-        </p>
-
-        {!active ? (
-          <button
-            onClick={start}
-            disabled={!supported || scoring}
-            className="rounded-full bg-red-600 px-10 py-3 text-lg font-extrabold uppercase tracking-wider text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Start pitch
-          </button>
-        ) : (
-          <button
-            onClick={endPitch}
-            className="rounded-full border-2 border-brass px-10 py-3 text-lg font-extrabold uppercase tracking-wider text-brass transition hover:bg-brass hover:text-black"
-          >
-            End pitch
-          </button>
-        )}
-      </section>
-
-      {question && (
-        <section key={log.length} role="alert" className="slam relative">
-          <div className="flash pointer-events-none fixed inset-0 z-40 bg-red-600/40" />
-          <div className="rounded-2xl border-4 border-red-600 bg-red-950/80 p-6 shadow-[0_0_60px_rgba(220,38,38,0.6)]">
-            <p className="text-sm font-black uppercase tracking-[0.3em] text-red-500">
-              🦴 Interruption #{log.length}
-            </p>
-            <p className="mt-2 text-3xl font-black leading-tight text-red-100 sm:text-4xl">{question}</p>
-          </div>
-        </section>
-      )}
-
-      <section
-        aria-live="polite"
-        className="min-h-36 whitespace-pre-wrap rounded-xl border border-brass/30 bg-black/40 p-5 text-lg"
-      >
-        {finalText || interim ? (
-          <>
-            {finalText}
-            {interim && <span className="text-stone-500"> {interim}</span>}
-          </>
-        ) : (
-          <span className="text-stone-500">Your pitch will appear here.</span>
-        )}
-      </section>
-
-      {error && <p className="text-red-400">Error: {error}</p>}
-
-      {log.length > 0 && (
-        <section>
-          <h2 className="mb-3 text-xl font-bold text-brass">Q&amp;A log</h2>
-          <ol className="flex flex-col gap-4">
-            {log.map((entry, i) => {
-              const isLast = i === log.length - 1;
-              const answer = isLast ? (entry.answer + " " + liveAnswer).trim() : entry.answer;
-              return (
-                <li key={i} className="rounded-xl border border-brass/30 bg-black/40 p-4">
-                  <p className="font-semibold text-red-400">
-                    Q{i + 1}: {entry.question}
-                  </p>
-                  <p className="mt-2 whitespace-pre-wrap">
-                    <span className="font-semibold text-brass">You: </span>
-                    {answer || <span className="text-stone-500">(no answer yet)</span>}
-                  </p>
-                </li>
-              );
-            })}
-          </ol>
-        </section>
-      )}
+      </div>
     </main>
   );
 }
