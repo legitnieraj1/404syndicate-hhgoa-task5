@@ -1,5 +1,5 @@
 import { Type } from "@google/genai";
-import { generateWithRetry } from "@/lib/gemini";
+import { generateWithFallback } from "@/lib/gemini";
 import { getVc, type LogEntry, type Scorecard } from "@/lib/vcs";
 
 const BASE_PROMPT = `You have just finished listening to a founder's pitch, including your interruptions and their answers.
@@ -91,25 +91,36 @@ ${
 }`;
 
   try {
-    const response = await generateWithRetry(apiKey, {
+    const card = await generateWithFallback(
+      apiKey,
       model,
-      contents,
-      config: {
-        systemInstruction: `${getVc(vcId).persona}\n\n${BASE_PROMPT}`,
-        responseMimeType: "application/json",
-        responseSchema: schema,
+      {
+        contents,
+        config: {
+          systemInstruction: `${getVc(vcId).persona}\n\n${BASE_PROMPT}`,
+          responseMimeType: "application/json",
+          responseSchema: schema,
+        },
       },
-    });
-    const raw = JSON.parse(response.text ?? "");
-    const card: Scorecard = {
-      clarity: clamp(raw.clarity),
-      conviction: clamp(raw.conviction),
-      objectionHandling: clamp(raw.objectionHandling),
-      marketKnowledge: clamp(raw.marketKnowledge),
-      bestAnswer: { quote: String(raw.bestAnswer?.quote ?? ""), why: String(raw.bestAnswer?.why ?? "") },
-      worstAnswer: { quote: String(raw.worstAnswer?.quote ?? ""), why: String(raw.worstAnswer?.why ?? "") },
-      verdict: { invest: !!raw.verdict?.invest, line: String(raw.verdict?.line ?? "") },
-    };
+      (response): Scorecard => {
+        const raw = JSON.parse(response.text ?? "");
+        return {
+          clarity: clamp(raw.clarity),
+          conviction: clamp(raw.conviction),
+          objectionHandling: clamp(raw.objectionHandling),
+          marketKnowledge: clamp(raw.marketKnowledge),
+          bestAnswer: {
+            quote: String(raw.bestAnswer?.quote ?? ""),
+            why: String(raw.bestAnswer?.why ?? ""),
+          },
+          worstAnswer: {
+            quote: String(raw.worstAnswer?.quote ?? ""),
+            why: String(raw.worstAnswer?.why ?? ""),
+          },
+          verdict: { invest: !!raw.verdict?.invest, line: String(raw.verdict?.line ?? "") },
+        };
+      },
+    );
     return Response.json(card);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Gemini request failed.";

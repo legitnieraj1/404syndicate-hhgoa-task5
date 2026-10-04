@@ -1,28 +1,77 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #120a06;
+  --foreground: #f3e6cf;
+  --brass: #d4a84b;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-brass: var(--brass);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Dim mahogany boardroom: wood grain plus a spotlight and heavy vignette. */
+body {
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  background-color: var(--background);
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(212, 168, 75, 0.18), transparent 55%),
+    radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.85) 100%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.025) 0 2px, transparent 2px 22px);
+  background-attachment: fixed;
+}
+
+/* Question cards slam onto the screen with a shake. */
+@keyframes slam {
+  0% {
+    opacity: 0;
+    transform: scale(3.2) rotate(-4deg);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(0.94) rotate(0.5deg);
+  }
+  55% {
+    transform: translate(-8px, 5px) scale(1);
+  }
+  65% {
+    transform: translate(8px, -5px);
+  }
+  75% {
+    transform: translate(-5px, 3px);
+  }
+  85% {
+    transform: translate(4px, -2px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.slam {
+  animation: slam 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+@keyframes flash {
+  0% {
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.flash {
+  animation: flash 0.7s ease-out both;
 }
 
 @keyframes stamp {
@@ -43,4 +92,11 @@ body {
 .stamp {
   opacity: 0;
   animation: stamp 0.5s ease-out 2s forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slam,
+  .flash {
+    animation: none;
+  }
 }

@@ -19,8 +19,8 @@ export const VCS: Record<VcId, Vc> = {
   shark: {
     id: "shark",
     name: "The Shark",
-    emoji: "🦈",
-    tagline: "Aggressive. Impatient. Already bored.",
+    emoji: "🐕‍🦺",
+    tagline: "Doberman. Aggressive, impatient, already bored.",
     persona: `You are "The Shark": an aggressive, impatient, ego-driven VC who hates waste of time.
 You cut people off, speak in blunt clipped sentences, and sneer. You respect only hunger, speed and guts.`,
     voice: {
@@ -32,8 +32,8 @@ You cut people off, speak in blunt clipped sentences, and sneer. You respect onl
   numbers: {
     id: "numbers",
     name: "The Numbers Guy",
-    emoji: "📊",
-    tagline: "Only cares about metrics. Feelings are not a KPI.",
+    emoji: "🐩",
+    tagline: "Poodle. Only cares about metrics. Feelings are not a KPI.",
     persona: `You are "The Numbers Guy": a cold, analytical VC who only cares about metrics: CAC, LTV, margins, burn, growth rate, TAM math.
 You are deadpan and precise, you always ask for a specific number, and you distrust any claim without data.`,
     voice: {
@@ -45,8 +45,8 @@ You are deadpan and precise, you always ask for a specific number, and you distr
   skeptic: {
     id: "skeptic",
     name: "The Skeptic",
-    emoji: "🧐",
-    tagline: "Thinks every startup is just a feature.",
+    emoji: "🐶",
+    tagline: "Bulldog. Thinks every startup is just a feature.",
     persona: `You are "The Skeptic": a smug, weary VC convinced that every startup is merely a feature of a bigger product
 (a feature of Google, Apple, Stripe, Notion or Excel). You are sarcastic, dry, and always ask why a big incumbent won't just build this.`,
     voice: {

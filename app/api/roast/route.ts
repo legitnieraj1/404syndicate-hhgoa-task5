@@ -1,4 +1,4 @@
-import { generateWithRetry } from "@/lib/gemini";
+import { generateWithFallback } from "@/lib/gemini";
 import { getVc } from "@/lib/vcs";
 
 const BASE_PROMPT = `You are interrupting a founder mid-pitch. Pick the SINGLE weakest claim in what they have said,
@@ -42,18 +42,22 @@ Already asked:
 ${askedList.length ? askedList.map((q) => `- ${q}`).join("\n") : "(none)"}`;
 
   try {
-    const response = await generateWithRetry(apiKey, {
+    const question = await generateWithFallback(
+      apiKey,
       model,
-      contents,
-      config: { systemInstruction: `${getVc(vcId).persona}\n\n${BASE_PROMPT}` },
-    });
-    let question = (response.text ?? "").trim().replace(/^["']|["']$/g, "");
-    // Safety net: keep only the first question if the model rambles.
-    const q = question.indexOf("?");
-    if (q !== -1) question = question.slice(0, q + 1);
-    if (!question) {
-      return Response.json({ error: "Empty response from model." }, { status: 502 });
-    }
+      {
+        contents,
+        config: { systemInstruction: `${getVc(vcId).persona}\n\n${BASE_PROMPT}` },
+      },
+      (response) => {
+        let text = (response.text ?? "").trim().replace(/^["']|["']$/g, "");
+        // Safety net: keep only the first question if the model rambles.
+        const q = text.indexOf("?");
+        if (q !== -1) text = text.slice(0, q + 1);
+        if (!text) throw new Error("Empty response from model.");
+        return text;
+      },
+    );
     return Response.json({ question });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Gemini request failed.";
