@@ -1,10 +1,11 @@
-import { GoogleGenAI } from "@google/genai";
+import { generateWithRetry } from "@/lib/gemini";
+import { getVc } from "@/lib/vcs";
 
-const SYSTEM_PROMPT = `You are a ruthless, skeptical Silicon Valley VC listening to a founder pitch live.
-You are interrupting them mid-pitch. Pick the SINGLE weakest claim in what they have said, especially the most recent part,
-and fire back exactly ONE short, pointed question about it. Hard limit: under 25 words.
+const BASE_PROMPT = `You are interrupting a founder mid-pitch. Pick the SINGLE weakest claim in what they have said,
+especially the most recent part, and fire back exactly ONE short, pointed question about it. Hard limit: under 25 words.
 Focus on: market size, unit economics, competition, why now, why this team.
 Never repeat or rephrase a question from the "Already asked" list; attack a different weakness instead.
+Stay fully in character in the wording of the question.
 Output only the question. No preamble, no quotes, no commentary.`;
 
 export async function POST(request: Request) {
@@ -19,8 +20,9 @@ export async function POST(request: Request) {
 
   let transcript: unknown;
   let asked: unknown;
+  let vcId: unknown;
   try {
-    ({ transcript, asked = [] } = await request.json());
+    ({ transcript, asked = [], vc: vcId } = await request.json());
   } catch {
     return Response.json({ error: "Invalid JSON body." }, { status: 400 });
   }
@@ -40,11 +42,10 @@ Already asked:
 ${askedList.length ? askedList.map((q) => `- ${q}`).join("\n") : "(none)"}`;
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
+    const response = await generateWithRetry(apiKey, {
       model,
       contents,
-      config: { systemInstruction: SYSTEM_PROMPT },
+      config: { systemInstruction: `${getVc(vcId).persona}\n\n${BASE_PROMPT}` },
     });
     let question = (response.text ?? "").trim().replace(/^["']|["']$/g, "");
     // Safety net: keep only the first question if the model rambles.

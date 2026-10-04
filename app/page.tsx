@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import Scorecard from "./scorecard";
+import { VC_LIST, VCS, type LogEntry, type Scorecard as ScorecardData, type Vc, type VcId } from "@/lib/vcs";
 
 const SILENCE_MS = 2500;
 const MAX_TALK_MS = 30000;
@@ -34,7 +36,17 @@ function getRecognitionCtor(): SpeechRecognitionCtor | undefined {
 const subscribeNoop = () => () => {};
 
 type Phase = "idle" | "listening" | "thinking" | "speaking";
-type LogEntry = { question: string; answer: string };
+
+function pickVoice(vc: Vc): SpeechSynthesisVoice | undefined {
+  const voices = window.speechSynthesis.getVoices().filter((v) => v.lang.startsWith("en"));
+  for (const name of vc.voice.prefer) {
+    const hit = voices.find((v) => v.name.includes(name));
+    if (hit) return hit;
+  }
+  // Fallback: a stable, different voice per persona.
+  const idx = VC_LIST.findIndex((x) => x.id === vc.id);
+  return voices.length ? voices[idx % voices.length] : undefined;
+}
 
 const PHASE_LABEL: Record<Phase, string> = {
   idle: "Press Start and pitch.",
@@ -56,6 +68,9 @@ export default function Home() {
   const [question, setQuestion] = useState("");
   const [log, setLog] = useState<LogEntry[]>([]);
   const [error, setError] = useState("");
+  const [vcId, setVcId] = useState<VcId | null>(null);
+  const [scoring, setScoring] = useState(false);
+  const [card, setCard] = useState<ScorecardData | null>(null);
 
   // Mutable session state lives in refs so recognition callbacks never see stale values.
   const recRef = useRef<SpeechRecognitionLike | null>(null);
@@ -70,6 +85,9 @@ export default function Home() {
   const sentLenRef = useRef(0);
   const lastTriggerRef = useRef(0);
   const pendingQRef = useRef<string | null>(null);
+  const vcRef = useRef<VcId>("shark");
+  const logRef = useRef<LogEntry[]>([]);
+  const endWaitRef = useRef<(() => void) | null>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function setPhase(p: Phase) {
@@ -97,14 +115,10 @@ export default function Home() {
     const answer = answerRef.current.trim();
     answerRef.current = "";
     setAnswerText("");
-    if (!answer) return;
-    setLog((prev) =>
-      prev.length
-        ? prev.map((e, i) =>
-            i === prev.length - 1 ? { ...e, answer: (e.answer + " " + answer).trim() } : e,
-          )
-        : prev,
-    );
+    const last = logRef.current[logRef.current.length - 1];
+    if (!answer || !last) return;
+    last.answer = (last.answer + " " + answer).trim();
+    setLog(logRef.current.map((e) => ({ ...e })));
   }
 
   // Recognition is stopped by now: log the question, speak it, then resume listening.
@@ -112,7 +126,8 @@ export default function Home() {
     pendingQRef.current = null;
     commitAnswer();
     askedRef.current.push(q);
-    setLog((prev) => [...prev, { question: q, answer: "" }]);
+    logRef.current.push({ question: q, answer: "" });
+    setLog(logRef.current.map((e) => ({ ...e })));
     setQuestion(q);
     setPhase("speaking");
 
@@ -125,8 +140,12 @@ export default function Home() {
     const synth = window.speechSynthesis;
     if (!synth) return resume();
     synth.cancel();
+    const vc = VCS[vcRef.current];
     const utter = new SpeechSynthesisUtterance(q);
-    utter.rate = 1.05;
+    const voice = pickVoice(vc);
+    if (voice) utter.voice = voice;
+    utter.pitch = vc.voice.pitch;
+    utter.rate = vc.voice.rate;
     utter.onend = resume;
     utter.onerror = resume;
     synth.speak(utter);
@@ -147,7 +166,7 @@ export default function Home() {
       const res = await fetch("/api/roast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript, asked: askedRef.current }),
+        body: JSON.stringify({ transcript, asked: askedRef.current, vc: vcRef.current }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Request failed");
@@ -202,7 +221,11 @@ export default function Home() {
       if (e.error === "no-speech" || e.error === "aborted") return;
       setError(e.error ?? "Speech recognition error");
       if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-        stop();
+        sessionRef.current++;
+        activeRef.current = false;
+        clearSilenceTimer();
+        window.speechSynthesis?.cancel();
+        setPhase("idle");
       }
     };
 
@@ -212,6 +235,7 @@ export default function Home() {
       setInterim("");
       if (!activeRef.current) {
         commitAnswer();
+        endWaitRef.current?.();
         return;
       }
       if (phaseRef.current === "speaking" && pendingQRef.current) {
@@ -237,6 +261,7 @@ export default function Home() {
     interimRef.current = "";
     answerRef.current = "";
     askedRef.current = [];
+    logRef.current = [];
     sentLenRef.current = 0;
     pendingQRef.current = null;
     lastTriggerRef.current = Date.now();
@@ -251,6 +276,7 @@ export default function Home() {
     startRecognition();
   }
 
+  // Used for fatal mic errors: stop everything without scoring.
   function stop() {
     sessionRef.current++;
     activeRef.current = false;
@@ -262,15 +288,118 @@ export default function Home() {
     else commitAnswer();
   }
 
+  async function endPitch() {
+    if (!transcriptRef.current.trim() && !interimRef.current.trim()) {
+      stop();
+      setError("Say something first, then end the pitch.");
+      return;
+    }
+    stop();
+    setScoring(true);
+    setError("");
+    // Let recognition flush its last words into the transcript and answer log.
+    if (runningRef.current) {
+      await new Promise<void>((resolve) => {
+        endWaitRef.current = resolve;
+        setTimeout(resolve, 1500);
+      });
+      endWaitRef.current = null;
+    }
+    commitAnswer();
+    try {
+      const res = await fetch("/api/score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transcript: transcriptRef.current,
+          log: logRef.current,
+          vc: vcRef.current,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Request failed");
+      setCard(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    } finally {
+      setScoring(false);
+    }
+  }
+
+  function chooseVc(id: VcId) {
+    vcRef.current = id;
+    setVcId(id);
+    // Voices load lazily in some browsers; touch the list so they're ready.
+    window.speechSynthesis?.getVoices();
+  }
+
+  function restart() {
+    setCard(null);
+    setError("");
+    setFinalText("");
+    setQuestion("");
+    setLog([]);
+    setVcId(null);
+  }
+
   const active = phase !== "idle";
   const liveAnswer = (answerText + " " + interim).trim();
 
+  if (card && vcId) return <Scorecard card={card} vc={VCS[vcId]} onRestart={restart} />;
+
+  if (!vcId) {
+    return (
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-16">
+        <header>
+          <h1 className="text-4xl font-bold tracking-tight">Pitch Roaster 🔥</h1>
+          <p className="mt-2 text-neutral-500">Pick the VC you have to survive.</p>
+        </header>
+        {!supported && (
+          <p className="rounded-lg bg-red-500/10 p-4 text-red-500">
+            Speech recognition isn&apos;t supported in this browser. Try Chrome or Safari.
+          </p>
+        )}
+        <div className="grid gap-4 sm:grid-cols-3">
+          {VC_LIST.map((vc) => (
+            <button
+              key={vc.id}
+              onClick={() => chooseVc(vc.id)}
+              className="flex flex-col items-start gap-2 rounded-2xl border-2 border-neutral-500/30 p-5 text-left transition hover:border-red-600 hover:bg-red-600/5"
+            >
+              <span className="text-5xl">{vc.emoji}</span>
+              <span className="text-xl font-bold">{vc.name}</span>
+              <span className="text-neutral-500">{vc.tagline}</span>
+            </button>
+          ))}
+        </div>
+      </main>
+    );
+  }
+
+  const vc = VCS[vcId];
+
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-16">
+      {scoring && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-black/90 text-white">
+          <p className="animate-pulse text-3xl font-black uppercase tracking-widest text-red-500">
+            {vc.emoji} {vc.name} is deliberating…
+          </p>
+          <p className="text-neutral-400">Tallying the damage.</p>
+        </div>
+      )}
       <header>
         <h1 className="text-4xl font-bold tracking-tight">Pitch Roaster 🔥</h1>
         <p className="mt-2 text-neutral-500">
-          Pitch your startup out loud. The VC will interrupt you.
+          Pitching to {vc.emoji} <strong>{vc.name}</strong>. {vc.tagline}
+          {!active && (
+            <button
+              onClick={() => setVcId(null)}
+              className="ml-2 text-sm underline hover:text-red-600"
+            >
+              Change VC
+            </button>
+          )}
         </p>
       </header>
 
@@ -284,17 +413,17 @@ export default function Home() {
         {!active ? (
           <button
             onClick={start}
-            disabled={!supported}
+            disabled={!supported || scoring}
             className="rounded-full bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-600 disabled:opacity-40"
           >
             Start
           </button>
         ) : (
           <button
-            onClick={stop}
-            className="rounded-full bg-neutral-800 px-6 py-3 font-semibold text-white transition hover:bg-neutral-700"
+            onClick={endPitch}
+            className="rounded-full bg-red-600 px-6 py-3 font-semibold text-white transition hover:bg-red-700"
           >
-            Stop
+            End pitch
           </button>
         )}
         <span className="text-neutral-500">{PHASE_LABEL[phase]}</span>
